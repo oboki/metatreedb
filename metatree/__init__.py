@@ -1,1 +1,1 @@
-from .metatree import MetaTree
+from .metatree import Metatree

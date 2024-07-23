@@ -3,7 +3,7 @@ import uuid
 import shutil
 
 from pathlib import Path
-from metatree import MetaTree
+from metatree import Metatree
 
 
 @pytest.fixture(scope="session")
@@ -11,7 +11,7 @@ def shared_fixture():
     basepath = f"/tmp/{uuid.uuid4().hex[:8]}"
     Path(basepath).mkdir()
     Path(f"{basepath}/trained.pkl").touch()
-    metatree = MetaTree(
+    metatree = Metatree(
         f"{basepath}/metatree",
         (
             "model",

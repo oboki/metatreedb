@@ -2,7 +2,7 @@ import logging
 from .io_handler import LocalYamlHandler, HttpJsonHandler
 
 
-class MetaTree:
+class Metatree:
     _io_handler = None
     _subclasses = []
     _url_prefix = None
@@ -10,7 +10,7 @@ class MetaTree:
     def __init_subclass__(cls):
         super().__init_subclass__()
         if cls._url_prefix is not None:
-            MetaTree._subclasses.append(cls)
+            Metatree._subclasses.append(cls)
 
     def __new__(cls, root, *args, **kwargs):
         if root.startswith("file://"):
@@ -151,7 +151,7 @@ class MetaTree:
         self._metadata = metadata
 
 
-class LocalYamlMetaTree(MetaTree):
+class LocalYamlMetaTree(Metatree):
     _io_handler = LocalYamlHandler
     _url_prefix = "/"
 
@@ -159,7 +159,7 @@ class LocalYamlMetaTree(MetaTree):
         super().__init__(root, keys, location)
 
 
-class HttpJsonMetaTree(MetaTree):
+class HttpJsonMetaTree(Metatree):
     _io_handler = HttpJsonHandler
     _url_prefix = "http://"
 
