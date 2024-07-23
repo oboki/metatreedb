@@ -1,23 +1,43 @@
 import logging
-import yaml
-import shutil
-from pathlib import Path
+from .io_handler import LocalYamlHandler, HttpJsonHandler
 
 
 class MetaTree:
-    def __init__(self, root, keys: tuple= None, location: dict = None):
+    _io_handler = None
+    _subclasses = []
+    _url_prefix = None
+
+    def __init_subclass__(cls):
+        super().__init_subclass__()
+        if cls._url_prefix is not None:
+            MetaTree._subclasses.append(cls)
+
+    def __new__(cls, root, *args, **kwargs):
+        if root.startswith("file://"):
+            root = root.replace("file://", "")
+        for subclass in cls._subclasses:
+            if root.startswith(subclass._url_prefix):
+                return object.__new__(subclass)
+        return super().__new__(cls)
+
+    def __init__(
+        self,
+        root,
+        keys: tuple = None,
+        location: dict = None,
+    ):
         self._root = root
         self._keys = keys
         self._location = location or {}
-        # self._has_lock = False
-        # self._is_locked = None
 
     def init(self):
         if not self._exists():
-            Path(self.location).mkdir()
-            Path(f"{self.location}/metadata.yml").touch()
-            Path(f"{self.location}/.metatree").touch()
-        elif Path(f"{self.location}/.metatree").exists():
+            self._io_handler.mkdir(self.location)
+            self._io_handler.touch(
+                f"{self.location}/{self._io_handler._metadata_filename}"
+            )
+            self._io_handler.touch(f"{self.location}/.metatree")
+        elif self._io_handler.exists(f"{self.location}/.metatree")():
             logging.warning(f"Metatree ({self.location}) is already initialized.")
         else:
             raise Exception(f"Path ({self.location}) already in use.")
@@ -25,51 +45,66 @@ class MetaTree:
     def get(self, location):
         return self._get(location)
 
+    @classmethod
+    def parse_child(cls, child, metadata):
+        if isinstance(child, dict):
+            if "value" in child:
+                child = child.get("value")
+            elif "metadata" in child:
+                query = child.get("metadata")
+                child = metadata.get(query)
+                if child is None:
+                    raise Exception(f"{query} not found in metadata.")
+            else:
+                raise Exception(f"Invalid child: {child}")
+        return child
+
+    def _create_child_location(self, next, child):
+        if not next._exists():
+            self._io_handler.mkdir(next.location)
+            next.metadata = {}
+        self.metadata = (
+            dict(children=[child])
+            if self.metadata is None
+            else dict(
+                {k: v for k, v in self.metadata.items() if not k == "children"},
+                children=list(set([child, *self.metadata.get("children", [])])),
+            )
+        )
+
+    @classmethod
+    def parse_string_location(cls, location, keys):
+        splited = location.strip("/").split("/")
+        return {
+            keys[k]: (
+                {"metadata": p.strip(">").strip("<")}
+                if p.endswith(">") and p.startswith("<")
+                else {"value": p}
+            )
+            for k, p in enumerate(splited)
+        }
+
     def _get(self, location: dict, create_location_if_not_exists: bool = False):
+        if isinstance(location, str):
+            location: dict = self.__class__.parse_string_location(location, self._keys)
         for key in self._keys:
             child = location.get(key, None)
             if self._location.get(key, None) is None and child is not None:
-                if isinstance(child, dict):
-                    if "value" in child:
-                        child = child.get("value")
-                    elif "metadata" in child:
-                        query = child.get("metadata")
-                        child = self.metadata.get(query)
-                        if child is None:
-                            raise Exception(f"{query} not found in metadata.")
-                    else:
-                        raise Exception(f"Invalid child: {child}")
-
-                next = MetaTree(
+                child = self.__class__.parse_child(
+                    child,
+                    self.metadata,
+                )
+                next = self.__class__(
                     self._root,
                     self._keys,
                     {key: child, **self._location},
                 )
-
                 if create_location_if_not_exists:
-                    if not next._exists():
-                        Path(next.location).mkdir()
-                        next.metadata = {}
-                    self.metadata = (
-                        dict(children=[child])
-                        if self.metadata is None
-                        else dict(
-                            {
-                                k: v
-                                for k, v in self.metadata.items()
-                                if not k == "children"
-                            },
-                            children=list(
-                                set([child, *self.metadata.get("children", [])])
-                            ),
-                        )
-                    )
-
+                    self._create_child_location(next, child)
                 if not next._exists():
                     raise Exception(f"Path ({next.location}) does not exist.")
                 if not child in self.metadata.get("children", []):
                     raise Exception(f"Child ({child}) not found in metadata.")
-
                 return next._get(
                     location,
                     create_location_if_not_exists=create_location_if_not_exists,
@@ -78,18 +113,16 @@ class MetaTree:
 
     def put(self, location, file=None, force=False):
         dest = self._get(location, create_location_if_not_exists=True)
-        file = Path(file)
-        if not file.exists():
+        if not self._io_handler.exists(file):
             raise Exception(f"File ({file}) does not exist.")
         if dest._exists():
-            shutil.copy(file, dest.location)
-            return Path(f"{dest.location}/{file.name}").exists()
+            return self._io_handler.copy(file, dest.location)
 
     def list(self):
         return [
             i.name
-            for i in Path(self.location).iterdir()
-            if not i.name.startswith("metadata.yml")
+            for i in self._io_handler.iterdir(self.location)
+            if not i.name.startswith(self._io_handler._metadata_filename)
         ]
 
     def update(self, **kwargs):
@@ -97,20 +130,8 @@ class MetaTree:
             raise Exception("You cannot update children.")
         self.metadata = dict(self.metadata, **kwargs)
 
-    @classmethod
-    def metadata_reader(cls, location):
-        filepath = f"{location}/metadata.yml"
-        with open(filepath, "r") as file:
-            return yaml.safe_load(file)
-
-    @classmethod
-    def metadata_writer(cls, location, metadata):
-        filepath = f"{location}/metadata.yml"
-        with open(filepath, "w") as file:
-            yaml.dump(metadata, file)
-
     def _exists(self):
-        return Path(self.location).exists()
+        return self._io_handler.exists(self.location)
 
     @property
     def location(self):
@@ -122,9 +143,25 @@ class MetaTree:
 
     @property
     def metadata(self):
-        return self.__class__.metadata_reader(self.location)
+        return self._io_handler.to_dict(self.location)
 
     @metadata.setter
     def metadata(self, metadata):
-        self.__class__.metadata_writer(self.location, metadata)
+        self._io_handler.from_dict(self.location, metadata)
         self._metadata = metadata
+
+
+class LocalYamlMetaTree(MetaTree):
+    _io_handler = LocalYamlHandler
+    _url_prefix = "/"
+
+    def __init__(self, root, keys: tuple = None, location=None):
+        super().__init__(root, keys, location)
+
+
+class HttpJsonMetaTree(MetaTree):
+    _io_handler = HttpJsonHandler
+    _url_prefix = "http://"
+
+    def __init__(self, root, keys: tuple = None, location=None):
+        super().__init__(root, keys, location)

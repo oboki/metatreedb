@@ -58,9 +58,15 @@ def test_query(shared_fixture):
     metatree, basepath = shared_fixture
     got = metatree.get(
         {
-            "model": {"value": "model_a"},
+            "model": "model_a",
             "version": {"metadata": "active"},
             "stage": {"value": "training"},
         }
     )
+    assert got.location == f"{basepath}/metatree/model_a/v1/training"
+
+
+def test_query_str(shared_fixture):
+    metatree, basepath = shared_fixture
+    got = metatree.get("model_a/<active>/training")
     assert got.location == f"{basepath}/metatree/model_a/v1/training"
