@@ -47,7 +47,7 @@ class LocalYamlHandler(IOHandler):
 
     @classmethod
     def iterdir(cls, location):
-        return Path(location).iterdir()
+        return [i.name for i in Path(location).iterdir()]
 
     @classmethod
     def copy(cls, src, dst):

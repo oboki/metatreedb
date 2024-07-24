@@ -122,11 +122,11 @@ class Metatree:
 
     def list(self):
         return [
-            i.name
+            i
             for i in self._io_handler.iterdir(self.location)
-            if not i.name.startswith(self._io_handler._metadata_filename)
+            if not i.startswith(self._io_handler._metadata_filename)
         ]
-    
+
     def get(self, location: str):
         segments = location.strip("/").split("/")
         found = self.search("/".join(segments[:-1]))

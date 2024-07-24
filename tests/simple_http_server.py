@@ -18,7 +18,7 @@ class JSONDirectoryHandler(SimpleHTTPRequestHandler):
 
 if __name__ == "__main__":
     port = 8000
-    server_address = ("", port)
+    server_address = ("0.0.0.0", port)
     httpd = HTTPServer(server_address, JSONDirectoryHandler)
     print(f"Serving on port {port}")
     httpd.serve_forever()
