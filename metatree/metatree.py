@@ -112,13 +112,13 @@ class Metatree:
                 )
         return self
 
-    def put(self, location, file=None, force=False):
+    def put(self, location, filepath=None, force=False):
         self._location = {}
         dest = self._search(location, create_location_if_not_exists=True)
-        if not self._io_handler.exists(file):
-            raise Exception(f"File ({file}) does not exist.")
+        if not self._io_handler.exists(filepath):
+            raise Exception(f"File ({filepath}) does not exist.")
         if dest._exists():
-            return self._io_handler.copy(file, dest.location)
+            return self._io_handler.copy(filepath, dest.location)
 
     def list(self):
         return [
@@ -126,6 +126,12 @@ class Metatree:
             for i in self._io_handler.iterdir(self.location)
             if not i.name.startswith(self._io_handler._metadata_filename)
         ]
+    
+    def get(self, location: str):
+        segments = location.strip("/").split("/")
+        found = self.search("/".join(segments[:-1]))
+        if segments[-1] in found.list():
+            return self._io_handler.read(f"{self._root}/{location}")
 
     def update(self, **kwargs):
         if "children" in kwargs:

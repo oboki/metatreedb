@@ -31,9 +31,19 @@ class IOHandler:
     def mkdir(cls, location):
         raise NotImplementedError
 
+    @classmethod
+    def read(cls, location):
+        raise NotImplementedError
+
 
 class LocalYamlHandler(IOHandler):
     _metadata_filename = "metadata.yaml"
+
+    @classmethod
+    def read(cls, location, chunk_size=8192):
+        with open(Path(location), "rb") as file:
+            while chunk := file.read(chunk_size):
+                yield chunk
 
     @classmethod
     def iterdir(cls, location):
@@ -71,6 +81,13 @@ class LocalYamlHandler(IOHandler):
 
 class HttpJsonHandler(IOHandler):
     _metadata_filename = "metadata.json"
+
+    @classmethod
+    def read(cls, location, chunk_size=8192):
+        with requests.get(location, stream=True) as r:
+            r.raise_for_status()
+            for chunk in r.iter_content(chunk_size=chunk_size):
+                yield chunk
 
     @classmethod
     def iterdir(cls, location):

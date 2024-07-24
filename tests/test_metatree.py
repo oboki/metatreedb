@@ -1,6 +1,7 @@
 import pytest
 import uuid
 import shutil
+import pickle
 
 from pathlib import Path
 from metatree import Metatree
@@ -10,7 +11,8 @@ from metatree import Metatree
 def shared_fixture():
     basepath = f"/tmp/{uuid.uuid4().hex[:8]}"
     Path(basepath).mkdir()
-    Path(f"{basepath}/trained.pkl").touch()
+    with open(Path(f"{basepath}/trained.pkl"), "wb") as file:
+        pickle.dump(("spam","eggs",), file)
     metatree = Metatree(
         f"{basepath}/metatree",
         (
@@ -39,6 +41,14 @@ def test_search(shared_fixture):
     assert got.location == f"{basepath}/metatree/model_a/v1/training"
     got = metatree.search({"model": "model_a", "version": "v1"})
     assert got.location == f"{basepath}/metatree/model_a/v1"
+
+
+def test_get(shared_fixture):
+    metatree, basepath = shared_fixture
+    for chunk in metatree.get("model_a/v1/training/trained.pkl"):
+        with open(f"{basepath}/downloaded.pkl", "ab") as f:
+            f.write(chunk)
+    assert Path(f"{basepath}/downloaded.pkl").exists() == True
 
 
 def test_list(shared_fixture):
