@@ -33,30 +33,30 @@ def test_put(shared_fixture):
     assert res == True
 
 
-def test_get(shared_fixture):
+def test_search(shared_fixture):
     metatree, basepath = shared_fixture
-    got = metatree.get({"model": "model_a", "version": "v1", "stage": "training"})
+    got = metatree.search({"model": "model_a", "version": "v1", "stage": "training"})
     assert got.location == f"{basepath}/metatree/model_a/v1/training"
-    got = metatree.get({"model": "model_a", "version": "v1"})
+    got = metatree.search({"model": "model_a", "version": "v1"})
     assert got.location == f"{basepath}/metatree/model_a/v1"
 
 
 def test_list(shared_fixture):
     metatree, _ = shared_fixture
-    got = metatree.get({"model": "model_a", "version": "v1", "stage": "training"})
+    got = metatree.search({"model": "model_a", "version": "v1", "stage": "training"})
     assert got.list() == ["trained.pkl"]
 
 
 def test_update(shared_fixture):
     metatree, _ = shared_fixture
-    got = metatree.get({"model": "model_a"})
+    got = metatree.search({"model": "model_a"})
     got.update(active="v1")
     assert got.metadata.get("active") == "v1"
 
 
 def test_query(shared_fixture):
     metatree, basepath = shared_fixture
-    got = metatree.get(
+    got = metatree.search(
         {
             "model": "model_a",
             "version": {"metadata": "active"},
@@ -68,5 +68,5 @@ def test_query(shared_fixture):
 
 def test_query_str(shared_fixture):
     metatree, basepath = shared_fixture
-    got = metatree.get("model_a/<active>/training")
+    got = metatree.search("model_a/<active>/training")
     assert got.location == f"{basepath}/metatree/model_a/v1/training"
