@@ -1,5 +1,5 @@
 import logging
-from .io_handler import LocalYamlHandler, HttpJsonHandler
+from .io_handler import LocalJsonHandler, HttpJsonHandler
 
 
 class Metatree:
@@ -189,8 +189,8 @@ class Metatree:
         pass
 
 
-class LocalYamlMetaTree(Metatree):
-    _io_handler = LocalYamlHandler
+class LocalJsonMetaTree(Metatree):
+    _io_handler = LocalJsonHandler
     _url_prefix = "/"
 
     def __init__(

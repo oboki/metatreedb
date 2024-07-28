@@ -1,6 +1,6 @@
 import requests
 import shutil
-import yaml
+import json
 from pathlib import Path
 
 
@@ -36,8 +36,8 @@ class IOHandler:
         raise NotImplementedError
 
 
-class LocalYamlHandler(IOHandler):
-    _metadata_filename = "metadata.yaml"
+class LocalJsonHandler(IOHandler):
+    _metadata_filename = "metadata.json"
 
     @classmethod
     def read(cls, location, chunk_size=8192):
@@ -70,15 +70,21 @@ class LocalYamlHandler(IOHandler):
     def to_dict(cls, location, filepath=None):
         if filepath is None:
             filepath = f"{location}/{cls._metadata_filename}"
-        with open(filepath, "r") as file:
-            return yaml.safe_load(file)
+        with open(filepath, "rt") as file:
+            try:
+                with open(filepath, "rt") as file:
+                    return json.load(file)
+            except (FileNotFoundError, json.JSONDecodeError):
+                return {}
+            except Exception as e:
+                raise e
 
     @classmethod
     def from_dict(cls, location, metadata, filepath=None):
         if filepath is None:
             filepath = f"{location}/{cls._metadata_filename}"
         with open(filepath, "w") as file:
-            yaml.dump(metadata, file)
+            json.dump(metadata, file)
 
 
 class HttpJsonHandler(IOHandler):
