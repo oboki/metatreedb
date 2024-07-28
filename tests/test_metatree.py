@@ -21,7 +21,6 @@ def shared_fixture():
             "stage",
         ),
     )
-    metatree.init()
     yield metatree, basepath
     shutil.rmtree(basepath)
 

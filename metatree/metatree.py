@@ -25,10 +25,15 @@ class Metatree:
         root,
         keys: tuple = None,
         location: dict = None,
+        enable_locking: bool = False,
+        **kwargs,
     ):
         self._root = root
         self._keys = keys
         self._location = location or {}
+        self._enable_locking = enable_locking
+        if not kwargs.get("skip_init", False):
+            self.init()
 
     def init(self):
         if not self._exists():
@@ -36,8 +41,8 @@ class Metatree:
             self._io_handler.touch(
                 f"{self.location}/{self._io_handler._metadata_filename}"
             )
-            self._io_handler.touch(f"{self.location}/.metatree")
-        elif self._io_handler.exists(f"{self.location}/.metatree")():
+            self.config = dict(keys=self._keys)
+        elif self._io_handler.exists(f"{self.location}/.metatree"):
             logging.warning(f"Metatree ({self.location}) is already initialized.")
         else:
             raise Exception(f"Path ({self.location}) already in use.")
@@ -97,8 +102,9 @@ class Metatree:
                 )
                 next = self.__class__(
                     self._root,
-                    self._keys,
-                    {key: child, **self._location},
+                    location={key: child, **self._location},
+                    skip_init=True,
+                    **self.config,
                 )
                 if create_location_if_not_exists:
                     self._create_child_location(next, child)
@@ -158,18 +164,54 @@ class Metatree:
         self._io_handler.from_dict(self.location, metadata)
         self._metadata = metadata
 
+    @property
+    def config(self):
+        return {
+            k: tuple(v) if k == "keys" else k
+            for k, v in self._io_handler.to_dict(
+                self.location, filepath=f"{self._root}/.metatree"
+            ).items()
+        }
+
+    @config.setter
+    def config(self, metadata):
+        self._io_handler.from_dict(
+            self.location,
+            {k: list(v) if k == "keys" else k for k, v in metadata.items()},
+            filepath=f"{self._root}/.metatree",
+        )
+        self._metadata = metadata
+
+    def lock(self):
+        pass
+
+    def unlock(self):
+        pass
+
 
 class LocalYamlMetaTree(Metatree):
     _io_handler = LocalYamlHandler
     _url_prefix = "/"
 
-    def __init__(self, root, keys: tuple = None, location=None):
-        super().__init__(root, keys, location)
+    def __init__(
+        self,
+        root,
+        keys: tuple = None,
+        location=None,
+        **kwargs,
+    ):
+        super().__init__(root, keys, location, **kwargs)
 
 
 class HttpJsonMetaTree(Metatree):
     _io_handler = HttpJsonHandler
     _url_prefix = "http://"
 
-    def __init__(self, root, keys: tuple = None, location=None):
-        super().__init__(root, keys, location)
+    def __init__(
+        self,
+        root,
+        keys: tuple = None,
+        location=None,
+        **kwargs,
+    ):
+        super().__init__(root, keys, location, **kwargs)

@@ -16,7 +16,7 @@ class IOHandler:
         raise NotImplementedError
 
     @classmethod
-    def from_dict(cls):
+    def from_dict(cls, location, metadata, filepath=None):
         raise NotImplementedError
 
     @classmethod
@@ -67,14 +67,16 @@ class LocalYamlHandler(IOHandler):
         return Path(location).exists()
 
     @classmethod
-    def to_dict(cls, location):
-        filepath = f"{location}/{cls._metadata_filename}"
+    def to_dict(cls, location, filepath=None):
+        if filepath is None:
+            filepath = f"{location}/{cls._metadata_filename}"
         with open(filepath, "r") as file:
             return yaml.safe_load(file)
 
     @classmethod
-    def from_dict(cls, location, metadata):
-        filepath = f"{location}/{cls._metadata_filename}"
+    def from_dict(cls, location, metadata, filepath=None):
+        if filepath is None:
+            filepath = f"{location}/{cls._metadata_filename}"
         with open(filepath, "w") as file:
             yaml.dump(metadata, file)
 
@@ -113,9 +115,13 @@ class HttpJsonHandler(IOHandler):
         return requests.get(location).ok
 
     @classmethod
-    def to_dict(cls, location):
+    def to_dict(cls, location, filepath=None):
+        if filepath is None:
+            filepath = f"{location}/{cls._metadata_filename}"
         return requests.get(f"{location}/{cls._metadata_filename}").json()
 
     @classmethod
-    def from_dict(cls, location, metadata):
-        return requests.post(location, json=metadata)
+    def from_dict(cls, location, metadata, filepath=None):
+        if filepath is None:
+            filepath = f"{location}/{cls._metadata_filename}"
+        return requests.post(filepath, json=metadata)
