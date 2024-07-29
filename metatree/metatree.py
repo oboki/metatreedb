@@ -1,4 +1,6 @@
 import logging
+from pathlib import Path
+
 from .io_handler import LocalJsonHandler, HttpJsonHandler
 
 
@@ -124,6 +126,8 @@ class Metatree:
         if not self._io_handler.exists(filepath):
             raise Exception(f"File ({filepath}) does not exist.")
         if dest._exists():
+            if self._io_handler.exists(f"{dest.location}/{Path(filepath).name}"):
+                raise Exception(f"File ({filepath}) already exists.")
             return self._io_handler.copy(filepath, dest.location)
 
     def list(self):
@@ -135,14 +139,25 @@ class Metatree:
 
     def get(self, location: str):
         segments = location.strip("/").split("/")
-        found = self.search("/".join(segments[:-1]))
-        if segments[-1] in found.list():
-            return self._io_handler.read(f"{self._root}/{location}")
+        *base, child = segments
+        found = self.search(
+            self.__class__.parse_string_location("/".join(base), self._keys)
+        )
+        child = self.__class__.parse_child(
+            (
+                {"metadata": child.strip(">").strip("<")}
+                if child.endswith(">") and child.startswith("<")
+                else {"value": child}
+            ),
+            found.metadata,
+        )
+        if child in found.list():
+            return self._io_handler.read(f"{found.location}/{child}")
 
     def update(self, **kwargs):
         if "children" in kwargs:
             raise Exception("You cannot update children.")
-        self.metadata = dict(self.metadata, **kwargs)
+        self.metadata = dict(self.metadata, **{k: str(v) for k, v in kwargs.items()})
 
     def _exists(self):
         return self._io_handler.exists(self.location)
