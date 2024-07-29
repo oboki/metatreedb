@@ -1,7 +1,22 @@
 import logging
+
 from pathlib import Path
+from time import sleep
+from functools import wraps
 
 from .io_handler import LocalJsonHandler, HttpJsonHandler
+
+
+def with_lock(func):
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):
+        self.lock()
+        try:
+            return func(self, *args, **kwargs)
+        finally:
+            self.unlock()
+
+    return wrapper
 
 
 class MetatreeFactory:
@@ -16,9 +31,10 @@ class MetatreeFactory:
 
 
 class Metatree:
-    _io_handler = None
     _subclasses = []
+    _io_handler = None
     _url_prefix = None
+    _locked = None
 
     def __init_subclass__(cls):
         super().__init_subclass__()
@@ -191,6 +207,7 @@ class Metatree:
         return self._io_handler.to_dict(self.location)
 
     @metadata.setter
+    @with_lock
     def metadata(self, metadata):
         self._io_handler.from_dict(self.location, metadata)
         self._metadata = metadata
@@ -205,6 +222,7 @@ class Metatree:
         }
 
     @config.setter
+    @with_lock
     def config(self, metadata):
         self._io_handler.from_dict(
             self.location,
@@ -213,11 +231,25 @@ class Metatree:
         )
         self._metadata = metadata
 
+    @property
+    def locked(self):
+        return self._io_handler.exists(f"{self._root}/.lock")
+
     def lock(self):
-        pass
+        if not self.config.get("locking_enabled"):
+            return True
+        attempts = 0
+        while attempts < 5 and not self.locked:
+            try:
+                return self._io_handler.touch(f"{self._root}/.lock")
+            except:
+                attempts += 1
+                sleep(3)
 
     def unlock(self):
-        pass
+        if not self.config.get("locking_enabled"):
+            return True
+        return self._io_handler.unlink(f"{self._root}/.lock")
 
 
 class LocalJsonMetaTree(Metatree):

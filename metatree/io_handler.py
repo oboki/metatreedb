@@ -35,6 +35,10 @@ class IOHandler:
     def read(cls, location):
         raise NotImplementedError
 
+    @classmethod
+    def unlink(cls, location):
+        raise NotImplementedError
+
 
 class LocalJsonHandler(IOHandler):
     _metadata_filename = "metadata.json"
@@ -61,6 +65,10 @@ class LocalJsonHandler(IOHandler):
     @classmethod
     def touch(cls, location):
         return Path(location).touch()
+
+    @classmethod
+    def unlink(cls, location):
+        return Path(location).unlink()
 
     @classmethod
     def exists(cls, location):
@@ -115,6 +123,10 @@ class HttpJsonHandler(IOHandler):
     @classmethod
     def touch(cls, location):
         return requests.post(location)
+
+    @classmethod
+    def unlink(cls, location):
+        return requests.delete(location)
 
     @classmethod
     def exists(cls, location):
