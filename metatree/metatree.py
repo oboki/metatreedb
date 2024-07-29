@@ -38,13 +38,13 @@ class Metatree:
         root,
         keys: tuple = None,
         location: dict = None,
-        enable_locking: bool = False,
+        locking_enabled: bool = False,
         **kwargs,
     ):
         self._root = root
         self._keys = keys
         self._location = location or {}
-        self._enable_locking = enable_locking
+        self._locking_enabled = locking_enabled
         if not kwargs.get("skip_init", False):
             self.init()
 
@@ -54,9 +54,14 @@ class Metatree:
             self._io_handler.touch(
                 f"{self.location}/{self._io_handler._metadata_filename}"
             )
-            self.config = dict(keys=self._keys)
+            self.config = dict(keys=self._keys, locking_enabled=self._locking_enabled)
         elif self._io_handler.exists(f"{self.location}/.metatree"):
-            logging.warning(f"Metatree ({self.location}) is already initialized.")
+            self._keys = self.config.get("keys")
+            self._locking_enabled = self.config.get("locking_enabled")
+            if not self.config.get("keys") == self._keys:
+                logging.warning(
+                    "Keys are not equal to config. Provided keys will be ignored."
+                )
         else:
             raise Exception(f"Path ({self.location}) already in use.")
 
