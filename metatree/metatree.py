@@ -4,6 +4,17 @@ from pathlib import Path
 from .io_handler import LocalJsonHandler, HttpJsonHandler
 
 
+class MetatreeFactory:
+    @staticmethod
+    def create_instance(root, *args, **kwargs):
+        if root.startswith("file://"):
+            root = root.replace("file://", "")
+        for subclass in Metatree._subclasses:
+            if root.startswith(subclass._url_prefix):
+                return object.__new__(subclass)
+        return Metatree(root, *args, **kwargs)
+
+
 class Metatree:
     _io_handler = None
     _subclasses = []
@@ -15,12 +26,12 @@ class Metatree:
             Metatree._subclasses.append(cls)
 
     def __new__(cls, root, *args, **kwargs):
-        if root.startswith("file://"):
-            root = root.replace("file://", "")
-        for subclass in cls._subclasses:
-            if root.startswith(subclass._url_prefix):
-                return object.__new__(subclass)
-        return super().__new__(cls)
+        io_handler = kwargs.get("io_handler")
+        if io_handler is not None:
+            instance = super().__new__(cls)
+            instance._io_handler = io_handler
+            return instance
+        return MetatreeFactory.create_instance(root, *args, **kwargs)
 
     def __init__(
         self,
