@@ -63,7 +63,7 @@ def test_update(shared_fixture):
     assert got.metadata.get("active") == "v1"
 
 
-def test_query(shared_fixture):
+def test_dict_query(shared_fixture):
     metatree, basepath = shared_fixture
     got = metatree.find(
         {
@@ -75,7 +75,7 @@ def test_query(shared_fixture):
     assert got.location == f"{basepath}/metatree/model_a/v1/training"
 
 
-def test_query_str(shared_fixture):
+def test_string_query(shared_fixture):
     metatree, basepath = shared_fixture
     got = metatree.find("model_a/<active>/training")
     assert got.location == f"{basepath}/metatree/model_a/v1/training"
