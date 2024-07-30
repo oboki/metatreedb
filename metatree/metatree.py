@@ -70,8 +70,9 @@ class Metatree:
             self._io_handler.touch(
                 f"{self.location}/{self._io_handler._metadata_filename}"
             )
+            self._io_handler.touch(f"{self._root}/.metatree")
             self.config = dict(keys=self._keys, locking_enabled=self._locking_enabled)
-        elif self._io_handler.exists(f"{self.location}/.metatree"):
+        elif self._io_handler.exists(f"{self._root}/.metatree"):
             self._keys = self.config.get("keys")
             self._locking_enabled = self.config.get("locking_enabled")
             if not self.config.get("keys") == self._keys:
@@ -215,7 +216,7 @@ class Metatree:
     @property
     def config(self):
         return {
-            k: tuple(v) if k == "keys" else k
+            k: tuple(v) if k == "keys" else v
             for k, v in self._io_handler.to_dict(
                 self.location, filepath=f"{self._root}/.metatree"
             ).items()
