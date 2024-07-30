@@ -222,11 +222,10 @@ class Metatree:
         }
 
     @config.setter
-    # @with_lock
-    def config(self, metadata):
+    def config(self, config_dict):
         self._io_handler.from_dict(
             self.location,
-            {k: list(v) if k == "keys" else k for k, v in metadata.items()},
+            {k: list(v) if k == "keys" else v for k, v in config_dict.items()},
             filepath=f"{self._root}/.metatree",
         )
 
