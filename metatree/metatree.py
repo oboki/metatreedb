@@ -82,9 +82,9 @@ class Metatree:
         else:
             raise Exception(f"Path ({self.location}) already in use.")
 
-    def search(self, location):
+    def find(self, location):
         self._location = {}
-        found, _ = self._search(location)
+        found, _ = self._find(location)
         return found
 
     @classmethod
@@ -126,7 +126,7 @@ class Metatree:
             for k, p in enumerate(splited)
         }
 
-    def _search(self, location: dict, create_location_if_not_exists: bool = False):
+    def _find(self, location: dict, create_location_if_not_exists: bool = False):
         if isinstance(location, str):
             location: dict = self.__class__.parse_string_location(location, self._keys)
         for key in self._keys:
@@ -148,7 +148,7 @@ class Metatree:
                     raise Exception(f"Path ({next.location}) does not exist.")
                 if not child in self.metadata.get("children", []):
                     raise Exception(f"Child ({child}) not found in metadata.")
-                tree, self._location = next._search(
+                tree, self._location = next._find(
                     location,
                     create_location_if_not_exists=create_location_if_not_exists,
                 )
@@ -157,7 +157,7 @@ class Metatree:
 
     def put(self, location, filepath=None, force=False):
         self._location = {}
-        self._search(location, create_location_if_not_exists=True)
+        self._find(location, create_location_if_not_exists=True)
         if not self._io_handler.exists(filepath):
             raise Exception(f"File ({filepath}) does not exist.")
         if self._exists():
@@ -175,7 +175,7 @@ class Metatree:
     def get(self, location: str):
         segments = location.strip("/").split("/")
         *base, child = segments
-        found = self.search(
+        found = self.find(
             self.__class__.parse_string_location("/".join(base), self._keys)
         )
         child = self.__class__.parse_child(
