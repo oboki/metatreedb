@@ -84,7 +84,8 @@ class Metatree:
 
     def search(self, location):
         self._location = {}
-        return self._search(location)
+        found, _ = self._search(location)
+        return found
 
     @classmethod
     def parse_child(cls, child, metadata):
@@ -147,21 +148,22 @@ class Metatree:
                     raise Exception(f"Path ({next.location}) does not exist.")
                 if not child in self.metadata.get("children", []):
                     raise Exception(f"Child ({child}) not found in metadata.")
-                return next._search(
+                tree, self._location = next._search(
                     location,
                     create_location_if_not_exists=create_location_if_not_exists,
                 )
-        return self
+                return tree, self._location
+        return self, self._location
 
     def put(self, location, filepath=None, force=False):
         self._location = {}
-        dest = self._search(location, create_location_if_not_exists=True)
+        self._search(location, create_location_if_not_exists=True)
         if not self._io_handler.exists(filepath):
             raise Exception(f"File ({filepath}) does not exist.")
-        if dest._exists():
-            if self._io_handler.exists(f"{dest.location}/{Path(filepath).name}"):
+        if self._exists():
+            if self._io_handler.exists(f"{self.location}/{Path(filepath).name}"):
                 raise Exception(f"File ({filepath}) already exists.")
-            return self._io_handler.copy(filepath, dest.location)
+            return self._io_handler.copy(filepath, self.location)
 
     def list(self):
         return [
