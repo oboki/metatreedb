@@ -235,24 +235,28 @@ class Metatree:
             filepath=f"{self._root}/.metatree",
         )
 
-    @property
-    def locked(self):
-        return self._io_handler.exists(f"{self._root}/.lock")
-
     def lock(self):
         if not self.config.get("locking_enabled"):
             return True
         attempts = 0
-        while attempts < 5 and not self.locked:
+        while self._locked is not True:
+            if attempts > 5:
+                raise Exception("max attempts reached.")
             try:
+                if self._io_handler.exists(f"{self._root}/.lock"):
+                    raise Exception("Locking failed.")
+                self._locked = True
                 return self._io_handler.touch(f"{self._root}/.lock")
-            except:
+            except Exception as e:
+                logging.warning("Locking failed.")
                 attempts += 1
                 sleep(3)
+        raise Exception("lock failed.")
 
     def unlock(self):
         if not self.config.get("locking_enabled"):
             return True
+        self._locked = None
         return self._io_handler.unlink(f"{self._root}/.lock")
 
 
