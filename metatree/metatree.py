@@ -2,30 +2,18 @@ import logging
 
 from pathlib import Path
 from time import sleep
-from functools import wraps
+from urllib.parse import urlparse
 
 from .io_handler import LocalJsonHandler, HttpJsonHandler
-
-
-def with_lock(func):
-    @wraps(func)
-    def wrapper(self, *args, **kwargs):
-        self.lock()
-        try:
-            return func(self, *args, **kwargs)
-        finally:
-            self.unlock()
-
-    return wrapper
+from .util import with_lock, resolve_file_url
 
 
 class MetatreeFactory:
     @staticmethod
     def create_instance(root, *args, **kwargs):
-        if root.startswith("file://"):
-            root = root.replace("file://", "")
+        parsed = urlparse(root)
         for subclass in Metatree._subclasses:
-            if root.startswith(subclass._url_prefix):
+            if parsed.scheme in subclass._url_scheme:
                 return object.__new__(subclass)
         return Metatree(root, *args, **kwargs)
 
@@ -33,12 +21,12 @@ class MetatreeFactory:
 class Metatree:
     _subclasses = []
     _io_handler = None
-    _url_prefix = None
+    _url_scheme = None
     _locked = None
 
     def __init_subclass__(cls):
         super().__init_subclass__()
-        if cls._url_prefix is not None:
+        if cls._url_scheme is not None:
             Metatree._subclasses.append(cls)
 
     def __new__(cls, root, *args, **kwargs):
@@ -57,6 +45,9 @@ class Metatree:
         locking_enabled: bool = False,
         **kwargs,
     ):
+        _parsed_url = urlparse(root)
+        if _parsed_url.scheme in LocalJsonMetaTree._url_scheme:
+            root = resolve_file_url(root)
         self._root = root
         self._keys = keys
         self._location = location or {}
@@ -66,6 +57,7 @@ class Metatree:
 
     def init(self):
         if not self._exists():
+            print(self.location)
             self._io_handler.mkdir(self.location)
             self._io_handler.touch(
                 f"{self.location}/{self._io_handler._metadata_filename}"
@@ -166,7 +158,7 @@ class Metatree:
         if self._exists():
             if self._io_handler.exists(f"{self.location}/{Path(filepath).name}"):
                 raise Exception(f"File ({filepath}) already exists.")
-            return self._io_handler.copy(filepath, self.location)
+            return self._io_handler.copy(self.location, filepath)
 
     def list(self):
         return [
@@ -262,7 +254,7 @@ class Metatree:
 
 class LocalJsonMetaTree(Metatree):
     _io_handler = LocalJsonHandler
-    _url_prefix = "/"
+    _url_scheme = ["", "file"]
 
     def __init__(
         self,
@@ -276,7 +268,7 @@ class LocalJsonMetaTree(Metatree):
 
 class HttpJsonMetaTree(Metatree):
     _io_handler = HttpJsonHandler
-    _url_prefix = "http://"
+    _url_scheme = ["http"]
 
     def __init__(
         self,

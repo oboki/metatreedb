@@ -20,21 +20,26 @@ pip install metatreedb
 Here's an example of using Metatree as a model repository by setting up a database with `(model_name, version,)` as identifiers:
 
 ```bash
+from metatree import Metatree
+
 metatree = Metatree(
     "/tmp/my-model-repository",
     (
         "model",
         "version",
     ),
-    locking_enabled=True,
 )
+
+import uuid
+import pickle
+
+from pathlib import Path
 
 for i in range(1, 4):
     awful_uuid = uuid.uuid4()
     trained = Path("/tmp/metatree-files/trained.pkl")
     with open(trained, "wb") as f:
         pickle.dump(awful_uuid, f)
-
     metatree.put(f"my-awful-model/v{i}", trained)
 ```
 
@@ -84,7 +89,7 @@ You can use this search index to find files. By enclosing the keys from `metadat
 ```python
 metatree.find("my-awful-model/<active>")
 print(metatree.location)
-# This returns `/tmp/my-model-repository/my-awful-model/v2
+# This returns `file:///tmp/my-model-repository/my-awful-model/v2
 
 file = metatree.get("my-awful-model/<active>/<model_file>")
 print(file)

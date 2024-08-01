@@ -48,9 +48,9 @@ def test_put(shared_fixture):
 def test_find(shared_fixture):
     metatree, basepath = shared_fixture
     got = metatree.find({"model": "model_a", "version": "v1", "stage": "training"})
-    assert got.location == f"{basepath}/metatree/model_a/v1/training"
+    assert got.location == f"file://{basepath}/metatree/model_a/v1/training"
     got = metatree.find({"model": "model_a", "version": "v1"})
-    assert got.location == f"{basepath}/metatree/model_a/v1"
+    assert got.location == f"file://{basepath}/metatree/model_a/v1"
 
 
 def test_get(shared_fixture):
@@ -83,13 +83,13 @@ def test_dict_query(shared_fixture):
             "stage": {"value": "training"},
         }
     )
-    assert got.location == f"{basepath}/metatree/model_a/v1/training"
+    assert got.location == f"file://{basepath}/metatree/model_a/v1/training"
 
 
 def test_string_query(shared_fixture):
     metatree, basepath = shared_fixture
     got = metatree.find("model_a/<active>/training")
-    assert got.location == f"{basepath}/metatree/model_a/v1/training"
+    assert got.location == f"file://{basepath}/metatree/model_a/v1/training"
 
 
 async def async_update(mtree, **kwargs):

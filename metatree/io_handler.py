@@ -1,6 +1,8 @@
+import json
 import requests
 import shutil
-import json
+
+from functools import wraps
 from pathlib import Path
 
 
@@ -43,55 +45,72 @@ class IOHandler:
 class LocalJsonHandler(IOHandler):
     _metadata_filename = "metadata.json"
 
+    def remove_file_scheme(func):
+        @wraps(func)
+        def wrapper(cls, location, *args, **kwargs):
+            if isinstance(location, Path):
+                location = str(location)
+            location = location.replace("file://", "")
+            return func(cls, location, *args, **kwargs)
+        return wrapper
+
     @classmethod
+    @remove_file_scheme
     def read(cls, location, chunk_size=8192):
         with open(Path(location), "rb") as file:
             while chunk := file.read(chunk_size):
                 yield chunk
 
     @classmethod
+    @remove_file_scheme
     def iterdir(cls, location):
         return [i.name for i in Path(location).iterdir()]
 
     @classmethod
-    def copy(cls, src, dst):
-        shutil.copy(src, dst)
-        return cls.exists(f"{dst}/{Path(src).name}")
+    @remove_file_scheme
+    def copy(cls, location, filepath):
+        shutil.copy(filepath, location)
+        return cls.exists(f"{location}/{Path(filepath).name}")
 
     @classmethod
+    @remove_file_scheme
     def mkdir(cls, location):
         return Path(location).mkdir()
 
     @classmethod
+    @remove_file_scheme
     def touch(cls, location):
         return Path(location).touch()
 
     @classmethod
+    @remove_file_scheme
     def unlink(cls, location):
         return Path(location).unlink()
 
     @classmethod
+    @remove_file_scheme
     def exists(cls, location):
         return Path(location).exists()
 
     @classmethod
+    @remove_file_scheme
     def to_dict(cls, location, filepath=None):
         if filepath is None:
             filepath = f"{location}/{cls._metadata_filename}"
-        with open(filepath, "rt") as file:
-            try:
-                with open(filepath, "rt") as file:
-                    return json.load(file)
-            except (FileNotFoundError, json.JSONDecodeError):
-                return {}
-            except Exception as e:
-                raise e
+        try:
+            with open(filepath.replace('file://', ''), "rt") as file:
+                return json.load(file)
+        except (FileNotFoundError, json.JSONDecodeError):
+            return {}
+        except Exception as e:
+            raise e
 
     @classmethod
+    @remove_file_scheme
     def from_dict(cls, location, metadata, filepath=None):
         if filepath is None:
             filepath = f"{location}/{cls._metadata_filename}"
-        with open(filepath, "w") as file:
+        with open(filepath.replace('file://', ''), "w") as file:
             json.dump(metadata, file)
 
 
