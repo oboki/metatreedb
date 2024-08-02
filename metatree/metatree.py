@@ -173,7 +173,7 @@ class Metatree:
         *parent, child = segments
         found = self.find(
             self.__class__.parse_string_location("/".join(parent), self._keys)
-        )
+        ) if parent else self
         child = self.__class__.parse_child(
             (
                 {"metadata": child.strip(">").strip("<")}
