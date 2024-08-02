@@ -56,7 +56,15 @@ class Metatree:
             self.init()
 
     def init(self):
-        if not self._exists():
+        if self._io_handler.exists(f"{self._root}/.metatree"):
+            self._keys = self.config.get("keys")
+            print(self._keys)
+            self._locking_enabled = self.config.get("locking_enabled")
+            if not self.config.get("keys") == self._keys:
+                logging.warning(
+                    "Keys are not equal to config. Provided keys will be ignored."
+                )
+        elif not self._exists():
             print(self.location)
             self._io_handler.mkdir(self.location)
             self._io_handler.touch(
@@ -64,13 +72,6 @@ class Metatree:
             )
             self._io_handler.touch(f"{self._root}/.metatree")
             self.config = dict(keys=self._keys, locking_enabled=self._locking_enabled)
-        elif self._io_handler.exists(f"{self._root}/.metatree"):
-            self._keys = self.config.get("keys")
-            self._locking_enabled = self.config.get("locking_enabled")
-            if not self.config.get("keys") == self._keys:
-                logging.warning(
-                    "Keys are not equal to config. Provided keys will be ignored."
-                )
         else:
             raise Exception(f"Path ({self.location}) already in use.")
 
@@ -215,7 +216,7 @@ class Metatree:
         return {
             k: tuple(v) if k == "keys" else v
             for k, v in self._io_handler.to_dict(
-                self.location, filepath=f"{self._root}/.metatree"
+                self._root, filepath=f"{self._root}/.metatree"
             ).items()
         }
 
