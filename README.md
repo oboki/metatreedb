@@ -37,7 +37,7 @@ from pathlib import Path
 
 for i in range(1, 4):
     awful_uuid = uuid.uuid4()
-    trained = Path("/tmp/metatree-files/trained.pkl")
+    trained = Path("/tmp/my-model-repository/trained.pkl")
     with open(trained, "wb") as f:
         pickle.dump(awful_uuid, f)
     metatree.put(f"my-awful-model/v{i}", trained)
