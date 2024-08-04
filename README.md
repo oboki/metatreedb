@@ -8,6 +8,11 @@ In `metadata.json` in each tree node, you can manage information about child nod
 
 * metadata-based index
 * db-level concurrency control
+* flexible filesystem support
+  * local
+  * HDFS
+  * http
+    * proper customization is required
 
 ## Installation
 
@@ -95,4 +100,19 @@ file = metatree.get("my-awful-model/<active>/<model_file>")
 print(file)
 # The given path translates to `my-awful-model/v2/trained.pkl`,
 # and it returns generator object
+```
+
+### with WebHDFS
+
+To use WebHDFS, set the root path to the WebHDFS URL and provide a client with the necessary permissions:
+
+```python
+from metatreedb import Metatree
+from hdfs import InsecureClient
+
+metatree = Metatree(
+    "webhdfs://localhost:9870/tmp/my-model-repository",
+    ("model", "version"),
+    client=InsecureClient("http://localhost:9870", user="hadoop"),
+)
 ```

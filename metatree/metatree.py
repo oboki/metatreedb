@@ -4,7 +4,7 @@ from pathlib import Path
 from time import sleep
 from urllib.parse import urlparse
 
-from .io_handler import LocalJsonHandler, HttpJsonHandler
+from .io_handler import LocalJsonHandler, HttpJsonHandler, WebHdfsJsonHandler
 from .util import with_lock, resolve_file_url
 
 
@@ -52,20 +52,19 @@ class Metatree:
         self._keys = keys
         self._location = location or {}
         self._locking_enabled = locking_enabled
+        self._io_handler.client = kwargs.get("client", None)
         if not kwargs.get("skip_init", False):
             self.init()
 
     def init(self):
         if self._io_handler.exists(f"{self._root}/.metatree"):
             self._keys = self.config.get("keys")
-            print(self._keys)
             self._locking_enabled = self.config.get("locking_enabled")
             if not self.config.get("keys") == self._keys:
                 logging.warning(
                     "Keys are not equal to config. Provided keys will be ignored."
                 )
         elif not self._exists():
-            print(self.location)
             self._io_handler.mkdir(self.location)
             self._io_handler.touch(
                 f"{self.location}/{self._io_handler._metadata_filename}"
@@ -136,6 +135,7 @@ class Metatree:
                     self._root,
                     location={key: child, **self._location},
                     skip_init=True,
+                    client=self._io_handler.client,
                     **self.config,
                 )
                 if create_location_if_not_exists:
@@ -154,7 +154,7 @@ class Metatree:
     def put(self, location, filepath=None, force=False):
         self.root()
         self._find(location, create_location_if_not_exists=True)
-        if not self._io_handler.exists(filepath):
+        if not Path(filepath).exists():
             raise Exception(f"File ({filepath}) does not exist.")
         if self._exists():
             if self._io_handler.exists(f"{self.location}/{Path(filepath).name}"):
@@ -171,9 +171,13 @@ class Metatree:
     def get(self, location: str):
         segments = location.strip("/").split("/")
         *parent, child = segments
-        found = self.find(
-            self.__class__.parse_string_location("/".join(parent), self._keys)
-        ) if parent else self
+        found = (
+            self.find(
+                self.__class__.parse_string_location("/".join(parent), self._keys)
+            )
+            if parent
+            else self
+        )
         child = self.__class__.parse_child(
             (
                 {"metadata": child.strip(">").strip("<")}
@@ -270,6 +274,20 @@ class LocalJsonMetaTree(Metatree):
 class HttpJsonMetaTree(Metatree):
     _io_handler = HttpJsonHandler
     _url_scheme = ["http"]
+
+    def __init__(
+        self,
+        root,
+        keys: tuple = None,
+        location=None,
+        **kwargs,
+    ):
+        super().__init__(root, keys, location, **kwargs)
+
+
+class WebHdfsJsonMetaTree(Metatree):
+    _io_handler = WebHdfsJsonHandler
+    _url_scheme = ["webhdfs"]
 
     def __init__(
         self,
