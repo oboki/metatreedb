@@ -60,7 +60,10 @@ class LocalJsonHandler(IOHandler):
     @rewrite_location
     def read(cls, location, chunk_size=8192):
         with open(Path(location), "rb") as file:
-            while chunk := file.read(chunk_size):
+            while True:
+                chunk = file.read(chunk_size)
+                if not chunk:
+                    break
                 yield chunk
 
     @classmethod
