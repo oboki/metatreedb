@@ -47,7 +47,7 @@ class Metatree:
         root,
         keys: tuple = None,
         location: dict = None,
-        locking_enabled: bool = False,
+        locking_enabled: bool = True,
         **kwargs,
     ):
         _parsed_url = urlparse(root)
