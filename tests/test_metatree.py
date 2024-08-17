@@ -1,5 +1,4 @@
 import asyncio
-import logging
 import pickle
 import pytest
 import shutil
@@ -9,6 +8,7 @@ from functools import partial
 from pathlib import Path
 
 from metatree import Metatree
+from metatree.io_handler import LocalYamlHandler
 
 
 @pytest.fixture(scope="session")
@@ -127,3 +127,28 @@ def test_lock(shared_fixture, caplog):
     asyncio.run(_test_lock(shared_fixture))
     metatree, _ = shared_fixture
     assert metatree.metadata.get("spam") == "eggs"
+
+
+def test_custom_io_handler():
+    basepath = f"/tmp/{uuid.uuid4().hex[:8]}"
+    Path(basepath).mkdir()
+    with open(Path(f"{basepath}/trained.pkl"), "wb") as file:
+        pickle.dump(
+            (
+                "spam",
+                "eggs",
+            ),
+            file,
+        )
+    metatree = Metatree(
+        f"{basepath}/metatree",
+        (
+            "model",
+            "version",
+            "stage",
+        ),
+        locking_enabled=True,
+        io_handler=LocalYamlHandler,
+    )
+    metatree.put(f"my-awful-model/v1/training", Path(f"{basepath}/trained.pkl"))
+    shutil.rmtree(basepath)

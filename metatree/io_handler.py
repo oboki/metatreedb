@@ -1,6 +1,7 @@
 import json
 import requests
 import shutil
+import yaml
 
 from functools import wraps
 from pathlib import Path
@@ -245,3 +246,27 @@ class WebHdfsJsonHandler(IOHandler):
         prefix = cls.client.url.replace("http://", "webhdfs://")
         filepath = filepath.replace(prefix, "")
         cls.client.write(filepath, json.dumps(metadata), overwrite=True)
+
+class LocalYamlHandler(LocalJsonHandler):
+    _metadata_filename = "metadata.yml"
+
+    @classmethod
+    @LocalJsonHandler.rewrite_location
+    def to_dict(cls, location, filepath=None):
+        if filepath is None:
+            filepath = f"{location}/{cls._metadata_filename}"
+        try:
+            with open(filepath.replace("file://", ""), "rt") as file:
+                return yaml.safe_load(file)
+        except (FileNotFoundError, yaml.YAMLError):
+            return {}
+        except Exception as e:
+            raise e
+
+    @classmethod
+    @LocalJsonHandler.rewrite_location
+    def from_dict(cls, location, metadata, filepath=None):
+        if filepath is None:
+            filepath = f"{location}/{cls._metadata_filename}"
+        with open(filepath.replace("file://", ""), "w") as file:
+            yaml.safe_dump(metadata, file)

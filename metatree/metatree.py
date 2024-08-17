@@ -136,6 +136,7 @@ class Metatree:
                     location={key: child, **self._location},
                     skip_init=True,
                     client=self._io_handler.client,
+                    io_handler=self._io_handler,
                     **self.config,
                 )
                 if create_location_if_not_exists:
