@@ -1,4 +1,5 @@
 import json
+import re
 import requests
 import shutil
 import yaml
@@ -177,7 +178,7 @@ class WebHdfsJsonHandler(IOHandler):
     def rewrite_location(func):
         @wraps(func)
         def wrapper(cls, location, *args, **kwargs):
-            prefix = cls.client.url.replace("http://", "webhdfs://")
+            prefix = re.sub(r"^https?://", "webhdfs://", cls.client.url, count=1)
             location = location.replace(prefix, "")
             return func(cls, location, *args, **kwargs)
 
@@ -230,7 +231,7 @@ class WebHdfsJsonHandler(IOHandler):
     def to_dict(cls, location, filepath=None):
         if filepath is None:
             filepath = f"{location}/{cls._metadata_filename}"
-        prefix = cls.client.url.replace("http://", "webhdfs://")
+        prefix = re.sub(r"^https?://", "webhdfs://", cls.client.url, count=1)
         filepath = filepath.replace(prefix, "")
         try:
             return json.loads(b"".join(cls.read(filepath)).decode())
@@ -244,7 +245,7 @@ class WebHdfsJsonHandler(IOHandler):
     def from_dict(cls, location, metadata, filepath=None):
         if filepath is None:
             filepath = f"{location}/{cls._metadata_filename}"
-        prefix = cls.client.url.replace("http://", "webhdfs://")
+        prefix = re.sub(r"^https?://", "webhdfs://", cls.client.url, count=1)
         filepath = filepath.replace(prefix, "")
         cls.client.write(filepath, json.dumps(metadata), overwrite=True)
 
@@ -280,7 +281,7 @@ class S3JsonHandler(IOHandler):
     def rewrite_location(func):
         @wraps(func)
         def wrapper(cls, location, *args, **kwargs):
-            prefix = cls.client.meta.endpoint_url.replace("http://", "s3://")
+            prefix = re.sub(r"^https?://", "s3://", cls.client.meta.endpoint_url, count=1)
             location = location.replace(prefix, "").strip("/")
             return func(cls, location, *args, **kwargs)
 
@@ -367,7 +368,7 @@ class S3JsonHandler(IOHandler):
     def to_dict(cls, location, filepath=None):
         if filepath is None:
             filepath = f"{location}/{cls._metadata_filename}"
-        prefix = cls.client.meta.endpoint_url.replace("http://", "s3://")
+        prefix = re.sub(r"^https?://", "s3://", cls.client.meta.endpoint_url, count=1)
         filepath = filepath.replace(prefix, "").strip("/")
         response = cls.client.get_object(
             Bucket=cls.s3_bucket,
@@ -385,7 +386,7 @@ class S3JsonHandler(IOHandler):
     def from_dict(cls, location, metadata, filepath=None):
         if filepath is None:
             filepath = f"{location}/{cls._metadata_filename}"
-        prefix = cls.client.meta.endpoint_url.replace("http://", "s3://")
+        prefix = re.sub(r"^https?://", "s3://", cls.client.meta.endpoint_url, count=1)
         filepath = filepath.replace(prefix, "").strip("/")
         cls.client.put_object(
             Bucket=cls.s3_bucket,
