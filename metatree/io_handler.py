@@ -5,6 +5,7 @@ import yaml
 
 from functools import wraps
 from pathlib import Path
+from botocore.exceptions import ClientError
 
 
 class IOHandler:
@@ -247,6 +248,7 @@ class WebHdfsJsonHandler(IOHandler):
         filepath = filepath.replace(prefix, "")
         cls.client.write(filepath, json.dumps(metadata), overwrite=True)
 
+
 class LocalYamlHandler(LocalJsonHandler):
     _metadata_filename = "metadata.yml"
 
@@ -270,3 +272,123 @@ class LocalYamlHandler(LocalJsonHandler):
             filepath = f"{location}/{cls._metadata_filename}"
         with open(filepath.replace("file://", ""), "w") as file:
             yaml.safe_dump(metadata, file)
+
+
+class S3JsonHandler(IOHandler):
+    _metadata_filename = "metadata.json"
+
+    def rewrite_location(func):
+        @wraps(func)
+        def wrapper(cls, location, *args, **kwargs):
+            prefix = cls.client.meta.endpoint_url.replace("http://", "s3://")
+            location = location.replace(prefix, "").strip("/")
+            return func(cls, location, *args, **kwargs)
+
+        return wrapper
+
+    @classmethod
+    @rewrite_location
+    def read(cls, location, chunk_size=8192):
+        response = cls.client.get_object(
+            Bucket=cls.s3_bucket,
+            Key=location,
+        )
+        body = response.get("Body")
+        while True:
+            chunk = body.read(chunk_size)
+            if not chunk:
+                break
+            yield chunk
+
+    @classmethod
+    @rewrite_location
+    def iterdir(cls, location):
+        return [
+            c.get("Key")
+            for c in cls.client.list_objects(
+                Bucket=cls.s3_bucket,
+                Prefix=f"{location}/",
+                Delimiter="/",
+            ).get("Contents", [])
+        ]
+
+    @classmethod
+    @rewrite_location
+    def copy(cls, location, filepath):
+        cls.client.upload_file(
+            Bucket=cls.s3_bucket,
+            Key=f"{location}/{Path(filepath).name}",
+            Filename=filepath,
+        )
+        return cls.exists(f"{location}/{Path(filepath).name}")
+
+    @classmethod
+    @rewrite_location
+    def mkdir(cls, location):
+        return cls.client.put_object(
+            Bucket=cls.s3_bucket,
+            Key=f"{location}/",
+        )
+
+    @classmethod
+    @rewrite_location
+    def touch(cls, location):
+        return cls.client.put_object(
+            Bucket=cls.s3_bucket,
+            Key=location.replace("//", "/"),
+            Body=b"",
+        )
+
+    @classmethod
+    @rewrite_location
+    def unlink(cls, location):
+        return cls.client.delete_object(
+            Bucket=cls.s3_bucket,
+            Key=location,
+        )
+
+    @classmethod
+    @rewrite_location
+    def exists(cls, location):
+        try:
+            cls.client.head_object(
+                Bucket=cls.s3_bucket,
+                Key=location,
+            )
+            return True
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "404":
+                return len(cls.iterdir(location)) > 0
+            else:
+                raise
+
+    @classmethod
+    @rewrite_location
+    def to_dict(cls, location, filepath=None):
+        if filepath is None:
+            filepath = f"{location}/{cls._metadata_filename}"
+        prefix = cls.client.meta.endpoint_url.replace("http://", "s3://")
+        filepath = filepath.replace(prefix, "").strip("/")
+        response = cls.client.get_object(
+            Bucket=cls.s3_bucket,
+            Key=filepath,
+        )
+        try:
+            return json.loads(response.get("Body", {}).read())
+        except (FileNotFoundError, json.JSONDecodeError):
+            return {}
+        except Exception as e:
+            raise e
+
+    @classmethod
+    @rewrite_location
+    def from_dict(cls, location, metadata, filepath=None):
+        if filepath is None:
+            filepath = f"{location}/{cls._metadata_filename}"
+        prefix = cls.client.meta.endpoint_url.replace("http://", "s3://")
+        filepath = filepath.replace(prefix, "").strip("/")
+        cls.client.put_object(
+            Bucket=cls.s3_bucket,
+            Key=filepath,
+            Body=json.dumps(metadata),
+        )

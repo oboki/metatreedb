@@ -10,7 +10,7 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/oboki/metatreedb",
     packages=find_packages(),
-    install_requires=["requests", "hdfs"],
+    install_requires=["requests", "hdfs", "boto3"],
     extras_require={"dev": ["pytest"]},
     classifiers=[
         "Programming Language :: Python :: 3",

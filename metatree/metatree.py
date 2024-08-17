@@ -4,7 +4,12 @@ from pathlib import Path
 from time import sleep
 from urllib.parse import urlparse
 
-from .io_handler import LocalJsonHandler, HttpJsonHandler, WebHdfsJsonHandler
+from .io_handler import (
+    LocalJsonHandler,
+    HttpJsonHandler,
+    WebHdfsJsonHandler,
+    S3JsonHandler,
+)
 from .util import with_lock, resolve_file_url
 
 
@@ -52,7 +57,10 @@ class Metatree:
         self._keys = keys
         self._location = location or {}
         self._locking_enabled = locking_enabled
-        self._io_handler.client = kwargs.get("client", None)
+        if kwargs.get("client", None) is not None:
+            self._io_handler.client = kwargs.get("client")
+        if kwargs.get("s3_bucket", None) is not None:
+            self._io_handler.s3_bucket = kwargs.get("s3_bucket")
         if not kwargs.get("skip_init", False):
             self.init()
 
@@ -135,7 +143,7 @@ class Metatree:
                     self._root,
                     location={key: child, **self._location},
                     skip_init=True,
-                    client=self._io_handler.client,
+                    # client=self._io_handler.client,
                     io_handler=self._io_handler,
                     **self.config,
                 )
@@ -289,6 +297,20 @@ class HttpJsonMetaTree(Metatree):
 class WebHdfsJsonMetaTree(Metatree):
     _io_handler = WebHdfsJsonHandler
     _url_scheme = ["webhdfs"]
+
+    def __init__(
+        self,
+        root,
+        keys: tuple = None,
+        location=None,
+        **kwargs,
+    ):
+        super().__init__(root, keys, location, **kwargs)
+
+
+class S3JsonMetaTree(Metatree):
+    _io_handler = S3JsonHandler
+    _url_scheme = ["s3"]
 
     def __init__(
         self,

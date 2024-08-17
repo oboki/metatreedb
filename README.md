@@ -116,3 +116,27 @@ metatree = Metatree(
     client=InsecureClient("http://localhost:9870", user="hadoop"),
 )
 ```
+
+### with S3
+
+To use S3, set the root path to the S3 bucket URL and provide a boto3 client with the necessary permissions:
+
+```python
+from metatreedb import Metatree
+import boto3
+
+s3_client = boto3.client(
+    "s3",
+    region_name="us-east-1",
+    endpoint_url="http://localhost:3000", # Tested with moto package.
+    aws_access_key_id="your-access-key-id",
+    aws_secret_access_key="your-secret-access-key",
+)
+
+metatree = Metatree(
+    "s3://localhost:3000/tmp/my-model-repository",
+    ("model", "version"),
+    client=s3_client,
+    s3_bucket="your-s3-bucket-name",
+)
+```
