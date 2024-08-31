@@ -150,5 +150,5 @@ def test_custom_io_handler():
         locking_enabled=True,
         io_handler=LocalYamlHandler,
     )
-    metatree.put(f"my-awful-model/v1/training", Path(f"{basepath}/trained.pkl"))
+    metatree.put(f"my-awful-model/v1/training", f"{basepath}/trained.pkl")
     shutil.rmtree(basepath)

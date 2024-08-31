@@ -1,68 +1,23 @@
 import json
 import re
 import requests
-import shutil
 import yaml
+import fsspec
 
 from functools import wraps
 from pathlib import Path
 from botocore.exceptions import ClientError
+from os.path import basename
 
 
 class IOHandler:
-    _metadata_filename = None
+    _metadata_filename = "metadata.json"
+    fs = fsspec.filesystem("file")
     client = None
 
     @classmethod
-    def iterdir(cls, location):
-        raise NotImplementedError
-
-    @classmethod
-    def to_dict(cls, location):
-        raise NotImplementedError
-
-    @classmethod
-    def from_dict(cls, location, metadata, filepath=None):
-        raise NotImplementedError
-
-    @classmethod
-    def touch(cls, location):
-        raise NotImplementedError
-
-    @classmethod
-    def exists(cls, location):
-        raise NotImplementedError
-
-    @classmethod
-    def mkdir(cls, location):
-        raise NotImplementedError
-
-    @classmethod
-    def read(cls, location):
-        raise NotImplementedError
-
-    @classmethod
-    def unlink(cls, location):
-        raise NotImplementedError
-
-
-class LocalJsonHandler(IOHandler):
-    _metadata_filename = "metadata.json"
-
-    def rewrite_location(func):
-        @wraps(func)
-        def wrapper(cls, location, *args, **kwargs):
-            if isinstance(location, Path):
-                location = str(location)
-            location = location.replace("file://", "")
-            return func(cls, location, *args, **kwargs)
-
-        return wrapper
-
-    @classmethod
-    @rewrite_location
     def read(cls, location, chunk_size=8192):
-        with open(Path(location), "rb") as file:
+        with cls.fs.open(location, "rb") as file:
             while True:
                 chunk = file.read(chunk_size)
                 if not chunk:
@@ -70,43 +25,37 @@ class LocalJsonHandler(IOHandler):
                 yield chunk
 
     @classmethod
-    @rewrite_location
     def iterdir(cls, location):
-        return [i.name for i in Path(location).iterdir()]
+        return [basename(l.get("name")) for l in cls.fs.listdir(location)]
 
     @classmethod
-    @rewrite_location
     def copy(cls, location, filepath):
-        shutil.copy(filepath, location)
-        return cls.exists(f"{location}/{Path(filepath).name}")
+        dst = f"{location}/{basename(filepath)}"
+        cls.fs.copy(filepath, dst)
+        return cls.exists(dst)
 
     @classmethod
-    @rewrite_location
     def mkdir(cls, location):
-        return Path(location).mkdir()
+        return cls.fs.mkdir(location, exist_ok=True)
 
     @classmethod
-    @rewrite_location
     def touch(cls, location):
-        return Path(location).touch()
+        return cls.fs.touch(location)
 
     @classmethod
-    @rewrite_location
     def unlink(cls, location):
-        return Path(location).unlink()
+        return cls.fs.rm(location)
 
     @classmethod
-    @rewrite_location
     def exists(cls, location):
-        return Path(location).exists()
+        return cls.fs.exists(location)
 
     @classmethod
-    @rewrite_location
     def to_dict(cls, location, filepath=None):
         if filepath is None:
             filepath = f"{location}/{cls._metadata_filename}"
         try:
-            with open(filepath.replace("file://", ""), "rt") as file:
+            with cls.fs.open(filepath, "rt") as file:
                 return json.load(file)
         except (FileNotFoundError, json.JSONDecodeError):
             return {}
@@ -114,12 +63,14 @@ class LocalJsonHandler(IOHandler):
             raise e
 
     @classmethod
-    @rewrite_location
     def from_dict(cls, location, metadata, filepath=None):
         if filepath is None:
             filepath = f"{location}/{cls._metadata_filename}"
-        with open(filepath.replace("file://", ""), "w") as file:
+        with cls.fs.open(filepath, "w") as file:
             json.dump(metadata, file)
+
+
+class LocalJsonHandler(IOHandler): ...
 
 
 class HttpJsonHandler(IOHandler):
@@ -254,12 +205,11 @@ class LocalYamlHandler(LocalJsonHandler):
     _metadata_filename = "metadata.yml"
 
     @classmethod
-    @LocalJsonHandler.rewrite_location
     def to_dict(cls, location, filepath=None):
         if filepath is None:
             filepath = f"{location}/{cls._metadata_filename}"
         try:
-            with open(filepath.replace("file://", ""), "rt") as file:
+            with cls.fs.open(filepath, "rt") as file:
                 return yaml.safe_load(file)
         except (FileNotFoundError, yaml.YAMLError):
             return {}
@@ -267,11 +217,10 @@ class LocalYamlHandler(LocalJsonHandler):
             raise e
 
     @classmethod
-    @LocalJsonHandler.rewrite_location
     def from_dict(cls, location, metadata, filepath=None):
         if filepath is None:
             filepath = f"{location}/{cls._metadata_filename}"
-        with open(filepath.replace("file://", ""), "w") as file:
+        with cls.fs.open(filepath, "w") as file:
             yaml.safe_dump(metadata, file)
 
 
@@ -281,7 +230,9 @@ class S3JsonHandler(IOHandler):
     def rewrite_location(func):
         @wraps(func)
         def wrapper(cls, location, *args, **kwargs):
-            prefix = re.sub(r"^https?://", "s3://", cls.client.meta.endpoint_url, count=1)
+            prefix = re.sub(
+                r"^https?://", "s3://", cls.client.meta.endpoint_url, count=1
+            )
             location = location.replace(prefix, "").strip("/")
             return func(cls, location, *args, **kwargs)
 
