@@ -1,20 +1,20 @@
+import fsspec
 import json
 import re
 import requests
 import yaml
-import fsspec
 
-from functools import wraps
-from pathlib import Path
 from botocore.exceptions import ClientError
+from functools import wraps
 from os.path import basename
+from pathlib import Path
 
 
 class IOHandler:
     _metadata_filename = "metadata.json"
 
     @classmethod
-    def read(cls, location, chunk_size=8192, fs=None):
+    def read(cls, location, chunk_size=8192, fs: fsspec.AbstractFileSystem = None):
         with fs.open(location, "rb") as file:
             while True:
                 chunk = file.read(chunk_size)
@@ -27,29 +27,29 @@ class IOHandler:
         return [basename(l.get("name")) for l in fs.listdir(location)]
 
     @classmethod
-    def copy(cls, location, filepath, fs):
+    def copy(cls, location, filepath, fs: fsspec.AbstractFileSystem):
         dst = f"{location}/{basename(filepath)}"
-        fs.copy(filepath, dst)
+        fs.put(filepath, dst)
         return cls.exists(dst, fs=fs)
 
     @classmethod
-    def mkdir(cls, location, fs):
+    def mkdir(cls, location, fs: fsspec.AbstractFileSystem):
         return fs.mkdir(location, exist_ok=True)
 
     @classmethod
-    def touch(cls, location, fs):
+    def touch(cls, location, fs: fsspec.AbstractFileSystem):
         return fs.touch(location)
 
     @classmethod
-    def unlink(cls, location, fs):
+    def unlink(cls, location, fs: fsspec.AbstractFileSystem):
         return fs.rm(location)
 
     @classmethod
-    def exists(cls, location, fs):
+    def exists(cls, location, fs: fsspec.AbstractFileSystem):
         return fs.exists(location)
 
     @classmethod
-    def to_dict(cls, location, filepath=None, fs=None):
+    def to_dict(cls, location, filepath=None, fs: fsspec.AbstractFileSystem = None):
         if filepath is None:
             filepath = f"{location}/{cls._metadata_filename}"
         try:
@@ -61,7 +61,13 @@ class IOHandler:
             raise e
 
     @classmethod
-    def from_dict(cls, location, metadata, filepath=None, fs=None):
+    def from_dict(
+        cls,
+        location,
+        metadata,
+        filepath=None,
+        fs: fsspec.AbstractFileSystem = None,
+    ):
         if filepath is None:
             filepath = f"{location}/{cls._metadata_filename}"
         with fs.open(filepath, "w") as file:
@@ -71,38 +77,7 @@ class IOHandler:
 class LocalJsonHandler(IOHandler): ...
 
 
-class WebHdfsJsonHandler(IOHandler):
-    _metadata_filename = "metadata.json"
-
-    @classmethod
-    def read(cls, location, chunk_size=8192):
-        with cls.client.read(location, chunk_size=chunk_size) as reader:
-            for chunk in reader:
-                yield chunk
-
-    @classmethod
-    def mkdir(cls, location):
-        fs = fsspec.filesystem("webhdfs", **cls.kwargs)
-        print(location)
-        return fs.mkdir(location, exist_ok=True)
-
-    @classmethod
-    def touch(cls, location):
-        fs = fsspec.filesystem("webhdfs", **cls.kwargs)
-        return fs.touch(location)
-
-    @classmethod
-    def unlink(cls, location):
-        fs = fsspec.filesystem("webhdfs", **cls.kwargs)
-        return fs.rm(location)
-
-    @classmethod
-    def from_dict(cls, location, metadata, filepath=None):
-        fs = fsspec.filesystem("webhdfs", **cls.kwargs)
-        if filepath is None:
-            filepath = f"{location}/{cls._metadata_filename}"
-        with fs.open(filepath, "w") as file:
-            json.dump(metadata, file)
+class WebHdfsJsonHandler(IOHandler): ...
 
 
 class LocalYamlHandler(LocalJsonHandler):

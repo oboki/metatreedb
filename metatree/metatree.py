@@ -64,7 +64,6 @@ class Metatree:
             self._fs = kwargs.get("fs")
         else:
             self._fs = fsspec.filesystem(_parsed_url.scheme, **kwargs)
-        print(self._fs)
         if not kwargs.get("skip_init", False):
             self.init()
 

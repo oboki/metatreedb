@@ -121,14 +121,6 @@ async def _test_lock(shared_fixture):
     # assert exception_occurred == 3
 
 
-def test_lock(shared_fixture, caplog):
-    # logging.getLogger().setLevel(logging.DEBUG)
-    # caplog.set_level(logging.WARNING)
-    asyncio.run(_test_lock(shared_fixture))
-    metatree, _ = shared_fixture
-    assert metatree.metadata.get("spam") == "eggs"
-
-
 def test_custom_io_handler():
     basepath = f"/tmp/{uuid.uuid4().hex[:8]}"
     Path(basepath).mkdir()
@@ -152,3 +144,11 @@ def test_custom_io_handler():
     )
     metatree.put(f"my-awful-model/v1/training", f"{basepath}/trained.pkl")
     shutil.rmtree(basepath)
+
+
+def test_lock(shared_fixture, caplog):
+    # logging.getLogger().setLevel(logging.DEBUG)
+    # caplog.set_level(logging.WARNING)
+    asyncio.run(_test_lock(shared_fixture))
+    metatree, _ = shared_fixture
+    assert metatree.metadata.get("spam") == "eggs"
