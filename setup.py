@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="metatreedb",
-    version="0.1.9",
+    version="0.2.0",
     author="oboki",
     author_email="oboki@kakao.com",
     description="Metatree is a DBMS that uses the filesystem itself as a tree-structured database.",
@@ -12,11 +12,16 @@ setup(
     packages=find_packages(),
     install_requires=[
         "boto3",
-        "hdfs",
+        "fsspec",
         "pyyaml",
         "requests",
     ],
-    extras_require={"dev": ["pytest"]},
+    extras_require={
+        "dev": [
+            "pytest",
+            "wheel",
+        ]
+    },
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",

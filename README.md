@@ -94,7 +94,7 @@ You can use this search index to find files. By enclosing the keys from `metadat
 ```python
 metatree.find("my-awful-model/<active>")
 print(metatree.location)
-# This returns `file:///tmp/my-model-repository/my-awful-model/v2
+# This returns `/tmp/my-model-repository/my-awful-model/v2
 
 file = metatree.get("my-awful-model/<active>/<model_file>")
 print(file)
@@ -108,16 +108,17 @@ To use WebHDFS, set the root path to the WebHDFS URL and provide a client with t
 
 ```python
 from metatreedb import Metatree
-from hdfs import InsecureClient
 
 metatree = Metatree(
-    "webhdfs://localhost:9870/tmp/my-model-repository",
+    "webhdfs:///tmp/my-model-repository",
     ("model", "version"),
-    client=InsecureClient("http://localhost:9870", user="hadoop"),
+    host="localhost",
+    port=9870,
+    user="hadoop",
 )
 ```
 
-### with S3
+### with S3 (under maintenance)
 
 To use S3, set the root path to the S3 bucket URL and provide a boto3 client with the necessary permissions:
 
