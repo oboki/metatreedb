@@ -8,11 +8,10 @@ In `metadata.json` in each tree node, you can manage information about child nod
 
 * metadata-based index
 * db-level concurrency control
-* flexible filesystem support
+* abstract filesystem support (fsspec)
   * local
   * HDFS
-  * http
-    * proper customization is required
+  * S3
 
 ## Installation
 
@@ -104,7 +103,7 @@ print(file)
 
 ### with WebHDFS
 
-To use WebHDFS, set the root path to the WebHDFS URL and provide a client with the necessary permissions:
+To use WebHDFS, set the root path to the WebHDFS URL and provide hdfs args:
 
 ```python
 from metatreedb import Metatree
@@ -118,26 +117,18 @@ metatree = Metatree(
 )
 ```
 
-### with S3 (under maintenance)
+### with S3
 
-To use S3, set the root path to the S3 bucket URL and provide a boto3 client with the necessary permissions:
+To use S3, set the root path to the S3 bucket URL and provide s3fs args:
 
 ```python
 from metatreedb import Metatree
-import boto3
-
-s3_client = boto3.client(
-    "s3",
-    region_name="us-east-1",
-    endpoint_url="http://localhost:3000", # Tested with moto package.
-    aws_access_key_id="your-access-key-id",
-    aws_secret_access_key="your-secret-access-key",
-)
 
 metatree = Metatree(
-    "s3://localhost:3000/tmp/my-model-repository",
+    "s3://your-awesome-bucket/tmp/my-model-repository",
     ("model", "version"),
-    client=s3_client,
-    s3_bucket="your-s3-bucket-name",
+    endpoint_url="http://localhost:5000",
+    key="testing",
+    secret="testing",
 )
 ```

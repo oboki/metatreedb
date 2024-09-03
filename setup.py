@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="metatreedb",
-    version="0.2.0",
+    version="0.2.1",
     author="oboki",
     author_email="oboki@kakao.com",
     description="Metatree is a DBMS that uses the filesystem itself as a tree-structured database.",
@@ -11,10 +11,9 @@ setup(
     url="https://github.com/oboki/metatreedb",
     packages=find_packages(),
     install_requires=[
-        "boto3",
         "fsspec",
         "pyyaml",
-        "requests",
+        "s3fs",
     ],
     extras_require={
         "dev": [
