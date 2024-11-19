@@ -29,6 +29,7 @@ class Metatree:
     _io_handler = None
     _url_scheme = None
     _locked = None
+    _fs: fsspec.AbstractFileSystem = None
 
     def __init_subclass__(cls):
         super().__init_subclass__()
@@ -88,7 +89,7 @@ class Metatree:
 
     @property
     def root(self):
-        return self._root.replace("webhdfs://", "")
+        return self._root
 
     def set_location_to_root(self):
         self._location = {}
