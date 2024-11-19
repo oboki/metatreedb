@@ -172,7 +172,7 @@ class Metatree:
                 return tree, self._location
         return self, self._location
 
-    def put(self, location, filepath=None, force=False):
+    def put(self, location, filepath=None, force=False, recursive=False):
         self.set_location_to_root()
         self._find(location, create_location_if_not_exists=True)
         if not Path(filepath).exists():
@@ -182,7 +182,12 @@ class Metatree:
                 f"{self.location}/{Path(filepath).name}", fs=self._fs
             ):
                 raise Exception(f"File ({filepath}) already exists.")
-            return self._io_handler.copy(self.location, filepath, fs=self._fs)
+            return self._io_handler.copy(
+                self.location,
+                filepath,
+                fs=self._fs,
+                recursive=recursive,
+            )
 
     def list(self):
         return [

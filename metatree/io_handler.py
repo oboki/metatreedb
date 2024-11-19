@@ -21,9 +21,9 @@ class IOHandler:
         return [basename(l.get("name")) for l in fs.listdir(location)]
 
     @classmethod
-    def copy(cls, location, filepath, fs: fsspec.AbstractFileSystem):
+    def copy(cls, location, filepath, fs: fsspec.AbstractFileSystem, recursive=False):
         dst = f"{location}/{basename(filepath)}"
-        fs.put(str(filepath), dst)
+        fs.put(str(filepath), dst, recursive=recursive)
         return cls.exists(dst, fs=fs)
 
     @classmethod
