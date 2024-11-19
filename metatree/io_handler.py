@@ -23,7 +23,7 @@ class IOHandler:
     @classmethod
     def copy(cls, location, filepath, fs: fsspec.AbstractFileSystem):
         dst = f"{location}/{basename(filepath)}"
-        fs.put(filepath, dst)
+        fs.put(str(filepath), dst)
         return cls.exists(dst, fs=fs)
 
     @classmethod
