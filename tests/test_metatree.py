@@ -92,6 +92,23 @@ def test_string_query(shared_fixture):
     assert got.location == f"file://{basepath}/metatree/model_a/v1/training"
 
 
+def test_download(shared_fixture):
+    metatree, basepath = shared_fixture
+    with open(f"{basepath}/empty.txt", "w") as _:
+        metatree.put(
+            {"model": "model_a", "version": "v1", "stage": "training"},
+            f"{basepath}/empty.txt",
+        )
+    metatree.get("model_a/v1/training/empty.txt", outfile=f"{basepath}/downloaded.txt")
+    assert Path(f"{basepath}/downloaded.txt").exists()
+    recipe = Path(f"{basepath}/nested/spam/eggs/recipe")
+    recipe.parent.mkdir(parents=True)
+    recipe.touch()
+    metatree.put("model_a/v1/training", f"{basepath}/nested/spam", recursive=True)
+    metatree.get("model_a/v1/training/spam", outfile=f"{basepath}/spam", recursive=True)
+    assert Path(f"{basepath}/spam/eggs/recipe").exists()
+
+
 async def async_update(mtree, **kwargs):
     loop = asyncio.get_event_loop()
     func = partial(mtree.update, **kwargs)

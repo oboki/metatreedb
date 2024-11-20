@@ -197,7 +197,10 @@ class Metatree:
             if not i.startswith(self._io_handler._metadata_filename)
         ]
 
-    def get(self, location: str):
+    def get(self, location: str, outfile: str = None, recursive=False):
+        if outfile is not None:
+            if Path(outfile).exists():
+                raise Exception(f"Path '{outfile}' already exists.")
         segments = location.strip("/").split("/")
         *parent, child = segments
         found = (
@@ -216,6 +219,12 @@ class Metatree:
             found.metadata,
         )
         if child in found.list():
+            if outfile is not None:
+                found._fs.download(
+                    f"{found.location}/{child}", outfile, recursive=recursive
+                )
+                if not Path(outfile).exists():
+                    raise Exception(f"Download failed.")
             return self._io_handler.read(f"{found.location}/{child}", fs=self._fs)
 
     def update(self, **kwargs):
